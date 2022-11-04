@@ -48,4 +48,5 @@ runs:
         containerImage:
           repository: ${{ inputs.image }}
           tag: ${{ inputs.tag }}
+          pullPolicy: IfNotPresent
       value-files: '[ ".github/envs/common.yaml", ".github/envs/${{ inputs.env }}.yaml" ]'
