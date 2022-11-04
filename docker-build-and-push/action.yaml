@@ -1,0 +1,63 @@
+name: 'Docker Build Publish'
+inputs:
+  name:
+    description: Name of docker image build tag
+
+runs:
+  using: 'composite'
+  steps:
+
+  # - name: Cache Docker layers
+  #   uses: actions/cache@v2
+  #   with:
+  #     path: /tmp/.buildx-cache-${{ inputs.name }}
+  #     key: ${{ runner.os }}-${{ inputs.name }}-${{ github.sha }}
+  #     restore-keys: |
+  #       ${{ runner.os }}-${{ inputs.name }}
+
+  - name: Docker meta
+    id: meta
+    uses: docker/metadata-action@v3
+    with:
+      images: |
+        ${{ env.AWS_ECR_URL }}/${{ inputs.name }}
+      tags: |
+        type=raw,value=latest
+        type=ref,event=branch,suffix=-latest
+        type=sha,prefix=,format=long
+
+  - name: Set up Docker Buildx
+    uses: docker/setup-buildx-action@v1
+
+  - name: Configure AWS credentials
+    uses: aws-actions/configure-aws-credentials@v1
+    with:
+      aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+      aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+      aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+  - name: Login to ECR
+    uses: aws-actions/amazon-ecr-login@v1
+
+  - name: Create Repo if not exist
+    shell: bash
+    run: |
+      aws ecr describe-repositories --repository-names ${{ inputs.name }} && echo "${{ inputs.name }} exist in ECR Registry" || aws ecr create-repository --repository-name ${{ inputs.name }}
+
+  - name: Build And Push
+    uses: docker/build-push-action@v2
+    with:
+      context: .
+      file: Dockerfile
+      platforms: linux/amd64
+      tags: ${{ steps.meta.outputs.tags }}
+      push: true
+      build-args: APP_NAME=${{ inputs.name }}
+      # cache-from: type=local,src=/tmp/.buildx-cache-${{ inputs.name }}
+      # cache-to: type=local,mode=max,dest=/tmp/.buildx-cache-${{ inputs.name }}-new
+
+  # - name: Move cache
+  #   shell: bash
+  #   run: |
+  #     rm -rf /tmp/.buildx-cache-${{ inputs.name }}
+  #     mv /tmp/.buildx-cache-${{ inputs.name }}-new /tmp/.buildx-cache-${{ inputs.name }}

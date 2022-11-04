@@ -1,0 +1,51 @@
+name: 'Deploy'
+
+inputs:
+  name:
+    description: Name of helm release to deploy
+  cluster:
+    description: Traget EKS name
+  namespace:
+    description: Target namespace
+  env:
+    description: Target env
+  image: 
+    description: Docker image to deploy
+  tag:
+    description: Docker tag to deploy
+    default: latest
+
+runs:
+  using: 'composite'
+  steps:
+
+  - name: 'Configure AWS credentials'
+    uses: aws-actions/configure-aws-credentials@v1
+    with:
+      aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+      aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+      aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+  - name: 'Get KUBECONFIG for AWS EKS'
+    id: get-kubeconfig
+    shell: bash
+    run: |
+      aws eks update-kubeconfig --name ${{ inputs.cluster }} --kubeconfig .kubeconfig
+
+  - name: 'Helm Deploy'
+    # fork of deliverybot/helm@v1
+    uses: 'headout/helm@v1.7.4'
+    env:
+      KUBECONFIG: .kubeconfig
+    with:
+      helm: helm3
+      repository: https://helmcharts.gruntwork.io
+      chart: k8s-service
+      namespace: ${{ inputs.namespace }}-${{ inputs.env }}
+      release: ${{ inputs.name }}
+      values: |
+        applicationName: ${{ inputs.name }}
+        containerImage:
+          repository: ${{ inputs.image }}
+          tag: ${{ inputs.tag }}
+      value-files: '[ ".github/envs/common.yaml", ".github/envs/${{ inputs.env }}.yaml" ]'
