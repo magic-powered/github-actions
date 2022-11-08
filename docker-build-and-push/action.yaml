@@ -2,7 +2,10 @@ name: 'Docker Build Publish'
 inputs:
   name:
     description: Name of docker image build tag
-
+  build-args:
+    description: Docker build arguments
+    required: false
+    default: ''
 runs:
   using: 'composite'
   steps:
@@ -52,7 +55,7 @@ runs:
       platforms: linux/amd64
       tags: ${{ steps.meta.outputs.tags }}
       push: true
-      build-args: APP_NAME=${{ inputs.name }}
+      build-args: ${{ inputs.build-args }}
       # cache-from: type=local,src=/tmp/.buildx-cache-${{ inputs.name }}
       # cache-to: type=local,mode=max,dest=/tmp/.buildx-cache-${{ inputs.name }}-new
 
