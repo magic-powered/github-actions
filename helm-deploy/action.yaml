@@ -34,7 +34,7 @@ runs:
 
   - name: 'Helm Deploy'
     # fork of deliverybot/helm@v1
-    uses: 'headout/helm@v1.7.4'
+    uses: 'headout/helm@v1.7.6'
     env:
       KUBECONFIG: .kubeconfig
     with:
